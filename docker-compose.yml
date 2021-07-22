@@ -4,6 +4,6 @@ services:
     build: .
     ports:
       - "8000:8000"
-    env:
-      - "url_origen":"https://data.buenosaires.gob.ar"
-      - "apikey_origen":'apikey_origen'
+    environment:
+      - url_origen=https://data.buenosaires.gob.ar
+      - apikey_origen=apikey_origen
