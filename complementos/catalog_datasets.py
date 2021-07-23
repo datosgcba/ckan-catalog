@@ -69,6 +69,6 @@ def CatalogoDataset():
             catalogo = catalogo + (d+';')
 
         catalogo = catalogo + ('\n')
-    print(catalogo)
+    #print(catalogo)
     
     return listaDatasets
