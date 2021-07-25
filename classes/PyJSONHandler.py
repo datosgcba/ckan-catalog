@@ -1,9 +1,12 @@
 import http.server as server
+from io import StringIO
 import socketserver
 import json
 import os,sys,inspect
 import pandas as pd
 import pickle as cPickle
+
+from pandas.core.frame import DataFrame
 
 # Import organizaciones from common
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -52,19 +55,25 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
         '''
         Send Response
         '''
-        print(type(response))
-        df = pd.DataFrame(response, columns=['organizacion','dataset_id','nombre_dataset','url','frecuencia_actualizacion','ultima_modificacion'])
-        print(df)
+        dataFrame = pd.DataFrame(response, columns=['organizacion','dataset_id','nombre_dataset','url','frecuencia_actualizacion','ultima_modificacion'])
+        df = dataFrame.set_index('organizacion')
         s.send_response(200)
         s.send_header("Content-type", mimetype)
         s.end_headers()
         if (mimetype=='xlsx'):
             s.send_header('Content-Disposition', 'attachment; filename="catalog.xlsx"')
             df.to_excel('catalog.xlsx', encoding="iso-8859-1", engine='xlsxwriter')
-            print(type(df))
             with open('catalog.xlsx', 'rb') as file:
                 s.wfile.write(file.read())
-
+        
+        elif (mimetype=='csv'):
+            s.send_header('Content-Disposition', 'attachment; filename="catalog.csv"')            
+            #textStream = StringIO()
+            df.to_csv('catalog.csv')
+            with open('catalog.csv', 'rb') as file:
+                s.wfile.write(file.read())
+            
+        
         elif (mimetype=='json'):
             df_response = json.dumps(response)
             s.wfile.write(df_response.encode("utf-8"))
