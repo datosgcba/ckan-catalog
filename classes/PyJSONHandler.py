@@ -24,7 +24,7 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
         """
         Respond to a GET request.
         """
-        json_response = json.dumps({'status':'Default response'})
+        json_response = json.dumps({'status':'Missing Parameter'})
         checkPath = s.path[0:].split('/')
         if(checkPath[1] == ''):
             s.do_ResponseOK(json_response, "application/json")
@@ -42,11 +42,12 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
 
         # Remove first '/' from request string
         requestesHeader = s.path[1:].split('/')
+        print(requestesHeader[0])
         formato = requestesHeader[0].split('.')
         dict_s = dict(s.headers)
         if str(requestesHeader[0]) in acceptedValues:
-            response = catalog.CatalogoDataset()
-            s.do_ResponseOK(response, formato[1])
+          response = catalog.CatalogoDataset()
+          s.do_ResponseOK(response, formato[1])
         else:
             json_response = json.dumps({'error':'Value not valid'})
             s.do_ResponseFAIL(json_response)
@@ -55,27 +56,38 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
         '''
         Send Response
         '''
-        dataFrame = pd.DataFrame(response, columns=['organizacion','dataset_id','nombre_dataset','url','frecuencia_actualizacion','ultima_modificacion'])
-        df = dataFrame.set_index('organizacion')
         s.send_response(200)
-        s.send_header("Content-type", mimetype)
-        s.end_headers()
-        if (mimetype=='xlsx'):
+        empty_request = False
+        if (isinstance(response, str) and 'Missing Parameter' in response ):
+            empty_request = True
+        if (empty_request):
+            s.send_header("Content-type", "application/json")
+            s.end_headers()
+            s.wfile.write(response.encode("utf-8"))
+        else:
+          dataFrame = pd.DataFrame(response, columns=['organizacion','dataset_id','nombre_dataset','url','frecuencia_actualizacion','ultima_modificacion'])
+          df = dataFrame.set_index('organizacion')
+          
+          
+          if (mimetype=='xlsx'):
+            s.end_headers()
             s.send_header('Content-Disposition', 'attachment; filename="catalog.xlsx"')
             df.to_excel('catalog.xlsx', encoding="iso-8859-1", engine='xlsxwriter')
             with open('catalog.xlsx', 'rb') as file:
                 s.wfile.write(file.read())
-        
-        elif (mimetype=='csv'):
+          
+          elif (mimetype=='csv'):
+            s.end_headers()
             s.send_header('Content-Disposition', 'attachment; filename="catalog.csv"')            
             #textStream = StringIO()
             df.to_csv('catalog.csv')
             with open('catalog.csv', 'rb') as file:
                 s.wfile.write(file.read())
-            
-        
-        elif (mimetype=='json'):
+          
+          elif (mimetype=='json'):
             df_response = json.dumps(response)
+            s.send_header("Content-type", "application/json")
+            s.end_headers()
             s.wfile.write(df_response.encode("utf-8"))
         s.end_headers()
 
