@@ -5,6 +5,7 @@ import json
 import os,sys,inspect
 import pandas as pd
 import pickle as cPickle
+import csv
 
 from pandas.core.frame import DataFrame
 
@@ -68,7 +69,6 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
           dataFrame = pd.DataFrame(response, columns=['organizacion','dataset_id','nombre_dataset','url','frecuencia_actualizacion','ultima_modificacion'])
           df = dataFrame.set_index('organizacion')
           
-          
           if (mimetype=='xlsx'):
             s.end_headers()
             s.send_header('Content-Disposition', 'attachment; filename="catalog.xlsx"')
@@ -77,12 +77,19 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
                 s.wfile.write(file.read())
           
           elif (mimetype=='csv'):
+            # Create an in-memory text stream
+            textStream = StringIO()
+
+            # Write the DataFrame contents to the text stream's buffer as a CSV
+            df.to_csv(textStream)
+            csv = textStream.getvalue()
+            print("DataFrame as CSV (from the buffer):")
+            
+            # Print the buffer contents
             s.end_headers()
-            s.send_header('Content-Disposition', 'attachment; filename="catalog.csv"')            
-            #textStream = StringIO()
-            df.to_csv('catalog.csv')
-            with open('catalog.csv', 'rb') as file:
-                s.wfile.write(file.read())
+            s.send_header('Content-Disposition', 'attachment; filename="catalog.csv"')
+            s.wfile.write(csv.encode("utf-8"))
+                            
           
           elif (mimetype=='json'):
             df_response = json.dumps(response)
