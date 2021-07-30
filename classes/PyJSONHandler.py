@@ -1,5 +1,4 @@
 import http.server as server
-from io import StringIO
 import socketserver
 import json
 import os,sys,inspect
@@ -7,13 +6,14 @@ import pandas as pd
 import pickle as cPickle
 import csv
 
+from io import StringIO,BytesIO
 from pandas.core.frame import DataFrame
 
 # Import organizaciones from common
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 data_lib_dir = os.path.join(parent_dir, "complementos/")
-sys.path.insert(0,data_lib_dir) 
+sys.path.insert(0,data_lib_dir)
 import catalog_datasets as catalog
 
 class PyJSONHandler(server.BaseHTTPRequestHandler):
@@ -70,12 +70,18 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
           df = dataFrame.set_index('organizacion')
           
           if (mimetype=='xlsx'):
+            # Convert the data frame to Excel and store it in BytesIO object `workbook`:
+            output = BytesIO()
+            writer = pd.ExcelWriter(output,engine='xlsxwriter')
+            df.to_excel(writer)
+            writer.save()
+            output.seek(0)
+            workbook = output.read()            
             s.end_headers()
             s.send_header('Content-Disposition', 'attachment; filename="catalog.xlsx"')
-            df.to_excel('catalog.xlsx', encoding="iso-8859-1", engine='xlsxwriter')
-            with open('catalog.xlsx', 'rb') as file:
-                s.wfile.write(file.read())
+            s.wfile.write(workbook)
           
+
           elif (mimetype=='csv'):
             # Create an in-memory text stream
             textStream = StringIO()
@@ -83,7 +89,6 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
             # Write the DataFrame contents to the text stream's buffer as a CSV
             df.to_csv(textStream)
             csv = textStream.getvalue()
-            print("DataFrame as CSV (from the buffer):")
             
             # Print the buffer contents
             s.end_headers()
@@ -96,6 +101,7 @@ class PyJSONHandler(server.BaseHTTPRequestHandler):
             s.send_header("Content-type", "application/json")
             s.end_headers()
             s.wfile.write(df_response.encode("utf-8"))
+        
         s.end_headers()
 
     def do_ResponseFAIL(s, response):
